@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>✈ Airline Ticket Management System</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #e8eff5;
+      padding: 30px;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      font-size: 36px;
+      margin-bottom: 30px;
+      color: #004080;
+    }
+    .section {
+      max-width: 650px;
+      margin: 20px auto;
+      padding: 25px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    button, select, input {
+      padding: 10px 14px;
+      margin: 8px 4px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+    button {
+      background-color: #0077ff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background-color: #005fcc;
+    }
+    .back-button {
+      background-color: #999;
+      margin-top: 10px;
+    }
+    .logout-button {
+      background-color: #cc0000;
+      margin-left: 10px;
+    }
+    .output {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<h1>✈ Airline Ticket Management System</h1>
+
+<div class="section" id="RoleMenu">
+  <h2>Select Role</h2>
+  <button onclick="switchRole('Customer')">Customer</button>
+  <button onclick="switchRole('Employee')">Employee</button>
+  <button onclick="switchRole('Admin')">Admin</button>
+</div>
+
+<!-- Customer Section -->
+<div id="CustomerSection" class="section hidden">
+  <h2>Customer Portal</h2>
+  <select id="issueSelect"></select>
+  <button onclick="addTicket()">Add Ticket</button><br>
+
+  <input id="trackId" placeholder="Ticket ID">
+  <button onclick="trackTicket()">Track</button>
+  <input id="deleteId" placeholder="Ticket ID">
+  <button onclick="deleteTicket()">Delete</button><br>
+
+  <button onclick="viewCustomerTickets()">View My Tickets</button>
+  <button class="back-button" onclick="backToMenu()">⬅ Back</button>
+
+  <div id="customerOutput" class="output"></div>
+</div>
+
+<!-- Employee Section -->
+<div id="EmployeeSection" class="section hidden">
+  <h2>Employee Login</h2>
+  <input id="empDept" placeholder="Department">
+  <input id="empUser" placeholder="Username">
+  <input id="empPass" type="password" placeholder="Password">
+  <button id="empLoginBtn" onclick="employeeLogin()">Login</button>
+  <button class="back-button" onclick="backToMenu()">⬅ Back</button>
+
+  <div id="employeeActions" class="hidden">
+    <h3>Department Tickets</h3>
+    <button onclick="viewDeptTickets()">View Tickets</button>
+    <button onclick="viewDeletedTicketsEmployee()">View Deleted Tickets</button><br>
+
+    <input id="updateId" placeholder="Ticket ID to Update">
+    <select id="newStatus">
+      <option value="Open">Open</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Resolved">Resolved</option>
+      <option value="Closed">Closed</option>
+    </select>
+    <button onclick="updateTicket()">Update</button><br>
+
+    <input id="deleteIdEmp" placeholder="Ticket ID to Delete">
+    <button onclick="deleteTicketEmployee()">Delete Ticket</button>
+    <button class="logout-button" onclick="logoutEmployee()">Logout</button>
+
+    <div id="employeeOutput" class="output"></div>
+  </div>
+</div>
+
+<!-- Admin Section -->
+<div id="AdminSection" class="section hidden">
+  <h2>Admin Login</h2>
+  <input id="adminUser" placeholder="Username">
+  <input id="adminPass" type="password" placeholder="Password">
+  <button id="adminLoginBtn" onclick="adminLogin()">Login</button>
+  <button class="back-button" onclick="backToMenu()">⬅ Back</button>
+
+  <div id="adminActions" class="hidden">
+    <button onclick="viewAllTickets()">View All Tickets</button>
+    <button onclick="viewDeletedTickets()">View Deleted Tickets</button>
+    <button class="logout-button" onclick="logoutAdmin()">Logout</button>
+
+    <div id="adminOutput" class="output"></div>
+  </div>
+</div>
+
+<script>
+let ticketCounter = 100;
+let tickets = [];
+let deletedTickets = [];
+let customerTickets = [];
+let loggedInEmployee = null;
+let adminLoggedIn = false;
+
+const predefinedUsers = {
+  Support: { support1: "pass123", support2: "pass456" },
+  Management: { manage1: "pass111", manage2: "pass222" },
+  Billing: { bill1: "bill123", bill2: "bill456" },
+  Technical: { tech1: "tech123", tech2: "tech456" },
+  Admin: { admin: "admin123" }
+};
+
+const issues = [
+  "Flight Delay", "Baggage Lost", "Seat Change Request", "Refund Request",
+  "Flight Cancellation", "Meal Preference Change", "Overbooking Issue",
+  "Missed Connecting Flight", "Damaged Baggage", "Check-in Issues",
+  "Duplicate Booking", "Refund Delay", "Upgrade Request", "Flight Rescheduling",
+  "Cabin Pressure Issue", "Engine Inspection Delay", "Runway Closure", "Weather Diversion"
+];
+
+const issuePriority = {
+  "Flight Delay": ["High", "Support"], "Baggage Lost": ["High", "Support"],
+  "Seat Change Request": ["Medium", "Management"], "Refund Request": ["Medium", "Billing"],
+  "Flight Cancellation": ["High", "Technical"], "Meal Preference Change": ["Low", "Management"],
+  "Overbooking Issue": ["Medium", "Management"], "Missed Connecting Flight": ["High", "Support"],
+  "Damaged Baggage": ["High", "Support"], "Check-in Issues": ["Medium", "Support"],
+  "Duplicate Booking": ["High", "Technical"], "Refund Delay": ["Medium", "Billing"],
+  "Upgrade Request": ["Low", "Management"], "Flight Rescheduling": ["High", "Technical"],
+  "Cabin Pressure Issue": ["High", "Technical"], "Engine Inspection Delay": ["High", "Technical"],
+  "Runway Closure": ["High", "Technical"], "Weather Diversion": ["High", "Technical"]
+};
+
+// Load data from localStorage
+function loadState() {
+  tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
+  deletedTickets = JSON.parse(localStorage.getItem('deletedTickets') || '[]');
+  customerTickets = JSON.parse(localStorage.getItem('customerTickets') || '[]');
+  ticketCounter = +localStorage.getItem('ticketCounter') || 100;
+}
+
+// Save data to localStorage
+function saveState() {
+  localStorage.setItem('tickets', JSON.stringify(tickets));
+  localStorage.setItem('deletedTickets', JSON.stringify(deletedTickets));
+  localStorage.setItem('customerTickets', JSON.stringify(customerTickets));
+  localStorage.setItem('ticketCounter', ticketCounter.toString());
+}
+
+function fillIssues() {
+  const select = document.getElementById('issueSelect');
+  select.innerHTML = '';
+  issues.forEach(i => {
+    const opt = document.createElement("option");
+    opt.value = i; opt.textContent = i;
+    select.appendChild(opt);
+  });
+}
+
+function switchRole(role) {
+  document.querySelectorAll('.section').forEach(div => div.classList.add('hidden'));
+  document.getElementById(role + 'Section').classList.remove('hidden');
+}
+
+function backToMenu() {
+  document.querySelectorAll('.section').forEach(div => div.classList.add('hidden'));
+  document.getElementById('RoleMenu').classList.remove('hidden');
+}
+
+function addTicket() {
+  const issue = document.getElementById('issueSelect').value;
+  const [priority, department] = issuePriority[issue] || ["Low", "General"];
+  const newTicket = { id: ++ticketCounter, issue, priority, department, status: "Open" };
+  tickets.push(newTicket);
+  customerTickets.push(ticketCounter);
+  saveState();
+  document.getElementById('customerOutput').textContent = `🎟️ Ticket added!\nID: ${ticketCounter}\nDepartment: ${department}`;
+}
+
+function trackTicket() {
+  const id = +document.getElementById('trackId').value;
+  const t = tickets.find(t => t.id === id);
+  document.getElementById('customerOutput').textContent = t ? `ID: ${t.id}, ${t.issue}, ${t.status}` : "Not found.";
+}
+
+function deleteTicket() {
+  const id = +document.getElementById('deleteId').value;
+  const i = tickets.findIndex(t => t.id === id);
+  if (i >= 0) {
+    deletedTickets.push(tickets[i]);
+    tickets.splice(i, 1);
+    saveState();
+    document.getElementById('customerOutput').textContent = `Deleted ticket ${id}`;
+  } else {
+    document.getElementById('customerOutput').textContent = "Ticket not found.";
+  }
+}
+
+function viewCustomerTickets() {
+  const out = document.getElementById('customerOutput');
+  const list = customerTickets.map(id => {
+    const t = tickets.find(t => t.id === id);
+    return t ? `ID: ${t.id}, ${t.issue}, ${t.status}, Department: ${t.department}` : "";
+  }).join("\n");
+  out.textContent = list || "No tickets.";
+}
+
+function employeeLogin() {
+  const d = document.getElementById('empDept').value,
+        u = document.getElementById('empUser').value,
+        p = document.getElementById('empPass').value;
+  if (predefinedUsers[d] && predefinedUsers[d][u] === p) {
+    loggedInEmployee = d;
+    document.getElementById('employeeActions').classList.remove('hidden');
+    document.getElementById('employeeOutput').textContent = `Welcome ${u}`;
+    ['empDept', 'empUser', 'empPass', 'empLoginBtn'].forEach(id => document.getElementById(id).style.display = 'none');
+  } else alert("Invalid login");
+}
+
+function viewDeptTickets() {
+  document.getElementById('employeeOutput').textContent =
+    tickets.filter(t => t.department === loggedInEmployee)
+           .map(t => `ID: ${t.id}, ${t.issue}, Priority: ${t.priority}, Status: ${t.status}`)
+           .join("\n") || "None";
+}
+
+function updateTicket() {
+  const id = +document.getElementById('updateId').value,
+        newS = document.getElementById('newStatus').value,
+        t = tickets.find(t => t.id === id);
+  if (t && t.department === loggedInEmployee) {
+    t.status = newS;
+    saveState();
+    document.getElementById('employeeOutput').textContent = `Updated ticket ${id}`;
+  } else document.getElementById('employeeOutput').textContent = "Not found or unauthorized.";
+}
+
+function deleteTicketEmployee() {
+  const id = +document.getElementById('deleteIdEmp').value;
+  const index = tickets.findIndex(t => t.id === id && t.department === loggedInEmployee);
+  if (index >= 0) {
+    deletedTickets.push(tickets[index]);
+    tickets.splice(index, 1);
+    saveState();
+    document.getElementById('employeeOutput').textContent = `Deleted ticket ${id}`;
+  } else {
+    document.getElementById('employeeOutput').textContent = "Ticket not found or unauthorized.";
+  }
+}
+
+function viewDeletedTicketsEmployee() {
+  const deptDeleted = deletedTickets.filter(t => t.department === loggedInEmployee);
+  document.getElementById('employeeOutput').textContent = deptDeleted.length ?
+    deptDeleted.map(t => `ID: ${t.id}, ${t.issue}, ${t.status}`).join("\n") :
+    "No deleted tickets in your department.";
+}
+
+function adminLogin() {
+  const u = document.getElementById('adminUser').value,
+        p = document.getElementById('adminPass').value;
+  if (predefinedUsers["Admin"][u] === p) {
+    adminLoggedIn = true;
+    document.getElementById('adminActions').classList.remove('hidden');
+    document.getElementById('adminOutput').textContent = "Admin logged in.";
+    ['adminUser', 'adminPass', 'adminLoginBtn'].forEach(id => document.getElementById(id).style.display = 'none');
+  } else alert("Invalid admin login");
+}
+
+function viewAllTickets() {
+  document.getElementById('adminOutput').textContent = tickets.map(t =>
+    `ID: ${t.id}, ${t.issue}, ${t.status}, ${t.department}`).join("\n") || "None.";
+}
+
+function viewDeletedTickets() {
+  document.getElementById('adminOutput').textContent = deletedTickets.map(t =>
+    `ID: ${t.id}, ${t.issue}, ${t.status}, ${t.department}`).join("\n") || "None.";
+}
+
+function logoutEmployee() {
+  loggedInEmployee = null;
+  document.getElementById('employeeActions').classList.add('hidden');
+  ['empDept', 'empUser', 'empPass', 'empLoginBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.display = '';
+    if (el.tagName === 'INPUT') el.value = '';
+  });
+  document.getElementById('employeeOutput').textContent = '';
+  backToMenu();
+}
+
+function logoutAdmin() {
+  adminLoggedIn = false;
+  document.getElementById('adminActions').classList.add('hidden');
+  ['adminUser', 'adminPass', 'adminLoginBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.display = '';
+    if (el.tagName === 'INPUT') el.value = '';
+  });
+  document.getElementById('adminOutput').textContent = '';
+  backToMenu();
+}
+
+loadState();
+fillIssues();
+</script>
+
+</body>
+</html>
